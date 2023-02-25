@@ -5,10 +5,10 @@ Bring [helmet](https://github.com/helmetjs/helmet) to
 
 ## Quick Demo with Deno
 
-```
+```ts
 import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 import { Hono } from "npm:hono@2.7.7";
-import { honoHelmet } from "https://github.com/Catminusminus/hono-helmet/raw/main/src/index.ts"
+import { honoHelmet } from "https://github.com/Catminusminus/hono-helmet/raw/main/src/index.ts";
 
 const app = new Hono();
 
