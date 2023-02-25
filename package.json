@@ -4,6 +4,7 @@
   "description": "Bring helmet to Hono",
   "main": "index.js",
   "scripts": {
+    "format": "rome format --write src/*",
     "test": "vitest"
   },
   "author": "Catminusminus",
