@@ -1,0 +1,23 @@
+{
+  "name": "hono-helmet",
+  "version": "0.0.1",
+  "description": "Bring helmet to Hono",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest"
+  },
+  "author": "Catminusminus",
+  "license": "MIT",
+  "peerDependencies": {
+    "hono": "^3.0.0"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^0.2.4",
+    "hono": "3.0",
+    "rome": "^11.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.5",
+    "vite": "^4.1.4",
+    "vitest": "^0.29.1"
+  }
+}
