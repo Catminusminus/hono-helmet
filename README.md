@@ -3,6 +3,21 @@
 Bring [helmet](https://github.com/helmetjs/helmet) to
 [Hono](https://github.com/honojs/hono).
 
+## Quick Demo with Deno
+
+```
+import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
+import { Hono } from "npm:hono@2.7.7";
+import { honoHelmet } from "https://github.com/Catminusminus/hono-helmet/raw/main/src/index.ts"
+
+const app = new Hono();
+
+app.use(honoHelmet());
+app.get("/", (c) => c.text("Hello Hono!"));
+
+serve(app.fetch);
+```
+
 ## Requirements
 
 <strong>Sorry, but not published yet</strong>
