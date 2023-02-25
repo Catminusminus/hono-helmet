@@ -93,3 +93,11 @@ test("X-Permitted-Cross-Domain-Policies: all", () => {
 		expect(mock.res.headers).toEqual(defaultHeaders);
 	});
 });
+
+test("CSP throws error with a custom option", () => {
+	expect(() => {
+		honoHelmet({
+			contentSecurityPolicy: {},
+		});
+	}).toThrow();
+});

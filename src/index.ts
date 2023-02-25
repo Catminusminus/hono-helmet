@@ -92,7 +92,7 @@ class ContentSecurityPolicyHandler {
 	value: string;
 	header: string;
 	constructor(options: ContentSecurityPolicyOptions) {
-		throw Error("Not implemented yet");
+		throw new Error("Not implemented yet");
 		const { useDefaults, directives, reportOnly } = options;
 		this.value = "";
 		this.header =
