@@ -1,31 +1,48 @@
 import type { Context, MiddlewareHandler, Env } from "hono";
 
+type Sandbox =
+	| "allow-downloads"
+	| "allow-downloads-without-user-activation"
+	| "allow-forms"
+	| "allow-modals"
+	| "allow-orientation-lock"
+	| "allow-pointer-lock"
+	| "allow-popups"
+	| "allow-popups-to-escape-sandbox"
+	| "allow-presentation"
+	| "allow-same-origin"
+	| "allow-scripts"
+	| "allow-storage-access-by-user-activation"
+	| "allow-top-navigation"
+	| "allow-top-navigation-by-user-activation"
+	| "allow-top-navigation-to-custom-protocols";
+
 interface Directives {
-	defaultSrc?: string[];
-	baseUri?: string[];
-	fontSrc?: string[];
-	fontActions?: string[];
-	frameAncestors?: string[];
-	imgSrc?: string[];
-	objectSrc?: string[];
-	scriptSrc?: string[];
-	scriptSrcElem?: string[];
-	scriptSrcAttr?: string[];
-	styleSrc?: string[];
-	styleSrcElem?: string[];
-	styleSrcAttr?: string[];
-	workerSrc?: string[];
-	sandbox?: string[];
-	upgradeInsecureRequests?: string[];
-	childSrc?: string[];
-	connectSrc?: string[];
-	manifestSrc?: string[];
-	mediaSrc?: string[];
-	prefetchSrc?: string[];
-	formAction?: string[];
-	navigateto?: string[];
-	requireTrustedTypesFor?: string[];
-	trustedTypes?: string[];
+	defaultSrc?: string[] | boolean;
+	baseUri?: string[] | boolean;
+	fontSrc?: string[] | boolean;
+	formAction?: string[] | boolean;
+	frameAncestors?: string[] | boolean;
+	frameSrc?: string[] | false;
+	imgSrc?: string[] | boolean;
+	objectSrc?: string[] | boolean;
+	scriptSrc?: string[] | boolean;
+	scriptSrcElem?: string[] | false;
+	scriptSrcAttr?: string[] | boolean;
+	styleSrc?: string[] | boolean;
+	styleSrcElem?: string[] | false;
+	styleSrcAttr?: string[] | false;
+	workerSrc?: string[] | false;
+	sandbox?: Sandbox[] | false;
+	upgradeInsecureRequests?: boolean;
+	childSrc?: string[] | false;
+	connectSrc?: string[] | false;
+	manifestSrc?: string[] | false;
+	mediaSrc?: string[] | false;
+	prefetchSrc?: string[] | false;
+	requireTrustedTypesFor?: boolean;
+	trustedTypes?: string[] | false;
+	[key: string]: string[] | boolean | undefined;
 }
 
 interface ContentSecurityPolicyOptions {
@@ -88,20 +105,192 @@ class ContentSecurityPolicyDefaultHandler {
 	}
 }
 
+const defaultCspDirectives: Directives = {
+	defaultSrc: ["'self'"],
+	baseUri: ["'self'"],
+	fontSrc: ["'self' https: data:"],
+	frameAncestors: ["'self'"],
+	imgSrc: ["'self' data:"],
+	objectSrc: ["'none'"],
+	scriptSrc: ["'self'"],
+	scriptSrcAttr: ["'none'"],
+	styleSrc: ["'self' https: 'unsafe-inline'"],
+	upgradeInsecureRequests: true,
+	formAction: ["'self'"],
+};
+
+const createAllDirectives = (directives: Directives): Directives => {
+	const allDirectives = defaultCspDirectives;
+	const mergedDirectives = Object.assign(allDirectives, directives);
+	for (const directive in mergedDirectives) {
+		if (Object.prototype.hasOwnProperty.call(mergedDirectives, directive)) {
+			if (mergedDirectives[directive] === false) {
+				mergedDirectives[directive] = undefined;
+			}
+		}
+	}
+	return mergedDirectives;
+};
+
+const buildDirectivesString = (directives: Directives): string => {
+	const {
+		defaultSrc,
+		baseUri,
+		fontSrc,
+		formAction,
+		frameAncestors,
+		frameSrc,
+		imgSrc,
+		objectSrc,
+		scriptSrc,
+		scriptSrcElem,
+		scriptSrcAttr,
+		styleSrc,
+		styleSrcElem,
+		styleSrcAttr,
+		workerSrc,
+		sandbox,
+		upgradeInsecureRequests,
+		childSrc,
+		connectSrc,
+		manifestSrc,
+		mediaSrc,
+		prefetchSrc,
+		requireTrustedTypesFor,
+		trustedTypes,
+	} = directives;
+	const arr = [];
+	if (defaultSrc === true) {
+		arr.push("default-src 'self'");
+	} else if (defaultSrc) {
+		arr.push(`default-src ${defaultSrc.join(" ")}`);
+	}
+	if (baseUri === true) {
+		arr.push("base-uri 'self'");
+	} else if (baseUri) {
+		arr.push(`base-uri ${baseUri.join(" ")}`);
+	}
+	if (fontSrc === true) {
+		arr.push("font-src 'self' https: data:");
+	} else if (fontSrc) {
+		arr.push(`font-src ${fontSrc.join(" ")}`);
+	}
+	if (formAction === true) {
+		arr.push("form-action 'self'");
+	} else if (formAction) {
+		arr.push(`form-action ${formAction.join(" ")}`);
+	}
+	if (frameAncestors === true) {
+		arr.push("frame-ancestors 'self'");
+	} else if (frameAncestors) {
+		arr.push(`frame-ancestors ${frameAncestors.join(" ")}`);
+	}
+	if (frameSrc !== undefined && frameSrc !== false) {
+		arr.push(`frame-src ${frameSrc.join(" ")}`);
+	}
+	if (imgSrc === true) {
+		arr.push("img-src 'self'");
+	} else if (imgSrc) {
+		arr.push(`img-src ${imgSrc.join(" ")}`);
+	}
+	if (objectSrc === true) {
+		arr.push("object-src 'none'");
+	} else if (objectSrc) {
+		arr.push(`object-src ${objectSrc.join(" ")}`);
+	}
+	if (scriptSrc === true) {
+		arr.push("script-src 'self'");
+	} else if (scriptSrc) {
+		arr.push(`script-src ${scriptSrc.join(" ")}`);
+	}
+	if (scriptSrcElem !== undefined && scriptSrcElem !== false) {
+		arr.push(`script-src-elem ${scriptSrcElem.join(" ")}`);
+	}
+	if (scriptSrcAttr === true) {
+		arr.push("script-src-attr 'self'");
+	} else if (scriptSrcAttr) {
+		arr.push(`script-src-attr ${scriptSrcAttr.join(" ")}`);
+	}
+	if (styleSrc === true) {
+		arr.push("style-src 'self' https: 'unsafe-inline'");
+	} else if (styleSrc) {
+		arr.push(`style-src ${styleSrc.join(" ")}`);
+	}
+	if (styleSrcElem !== undefined && styleSrcElem !== false) {
+		arr.push(`style-src-elem ${styleSrcElem.join(" ")}`);
+	}
+	if (styleSrcAttr !== undefined && styleSrcAttr !== false) {
+		arr.push(`style-src-attr ${styleSrcAttr.join(" ")}`);
+	}
+	if (workerSrc !== undefined && workerSrc !== false) {
+		arr.push(`worker-src ${workerSrc.join(" ")}`);
+	}
+	if (sandbox !== undefined && sandbox !== false) {
+		arr.push(`sandbox ${sandbox.join(" ")}`);
+	}
+	if (upgradeInsecureRequests) {
+		arr.push("upgrade-insecure-requests");
+	}
+	if (childSrc !== undefined && childSrc !== false) {
+		arr.push(`child-src ${childSrc.join(" ")}`);
+	}
+	if (connectSrc !== undefined && connectSrc !== false) {
+		arr.push(`child-src ${connectSrc.join(" ")}`);
+	}
+	if (manifestSrc !== undefined && manifestSrc !== false) {
+		arr.push(`manifest-src ${manifestSrc.join(" ")}`);
+	}
+	if (mediaSrc !== undefined && mediaSrc !== false) {
+		arr.push(`media-src ${mediaSrc.join(" ")}`);
+	}
+	if (prefetchSrc !== undefined && prefetchSrc !== false) {
+		arr.push(`prefetch-src ${prefetchSrc.join(" ")}`);
+	}
+	if (trustedTypes !== undefined && trustedTypes !== false) {
+		if (trustedTypes.length === 0) {
+			arr.push("trusted-types");
+		} else {
+			arr.push(`trusted-types ${trustedTypes.join(" ")}`);
+		}
+	}
+	if (requireTrustedTypesFor) {
+		arr.push("require-trusted-types-for 'script'");
+	}
+	return arr.join(";");
+};
+
 class ContentSecurityPolicyHandler {
-	value: string;
-	header: string;
+	value: string = "";
+	header: string = "";
+	set: (value: Context) => void;
 	constructor(options: ContentSecurityPolicyOptions) {
-		throw new Error("Not implemented yet");
 		const { useDefaults, directives, reportOnly } = options;
-		this.value = "";
 		this.header =
 			reportOnly === undefined || reportOnly === false
 				? "Content-Security-Policy"
 				: "Content-Security-Policy-Report-Only";
+		if (directives === undefined || Object.keys(directives).length === 0) {
+			if (useDefaults === undefined || useDefaults) {
+				this.value = buildDirectivesString(defaultCspDirectives);
+				this.set = (c: Context) => {
+					c.res.headers.set(this.header, this.value);
+				};
+				return;
+			}
+			this.set = (_: Context) => {};
+			return;
+		}
+		if (useDefaults === false) {
+			this.value = buildDirectivesString(directives);
+		} else {
+			this.value = buildDirectivesString(createAllDirectives(directives));
+		}
+		this.set = (c: Context) => {
+			c.res.headers.set(this.header, this.value);
+		};
 	}
 	apply(c: Context): void {
-		c.res.headers.set(this.header, this.value);
+		this.set(c);
 	}
 }
 
