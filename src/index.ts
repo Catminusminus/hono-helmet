@@ -21,8 +21,9 @@ interface Directives {
 	defaultSrc?: string[] | boolean;
 	baseUri?: string[] | boolean;
 	fontSrc?: string[] | boolean;
-	formActions?: string[] | boolean;
+	formAction?: string[] | boolean;
 	frameAncestors?: string[] | boolean;
+	frameSrc?: string[] | false;
 	imgSrc?: string[] | boolean;
 	objectSrc?: string[] | boolean;
 	scriptSrc?: string[] | boolean;
@@ -112,7 +113,7 @@ const defaultCspDirectives: Directives = {
 	imgSrc: ["'self' data:"],
 	objectSrc: ["'none'"],
 	scriptSrc: ["'self'"],
-	scriptSrcAttr: ["'self'"],
+	scriptSrcAttr: ["'none'"],
 	styleSrc: ["'self' https: 'unsafe-inline'"],
 	upgradeInsecureRequests: true,
 	formAction: ["'self'"],
@@ -136,8 +137,9 @@ const buildDirectivesString = (directives: Directives): string => {
 		defaultSrc,
 		baseUri,
 		fontSrc,
-		formActions,
+		formAction,
 		frameAncestors,
+		frameSrc,
 		imgSrc,
 		objectSrc,
 		scriptSrc,
@@ -158,57 +160,60 @@ const buildDirectivesString = (directives: Directives): string => {
 		trustedTypes,
 	} = directives;
 	const arr = [];
-	if (defaultSrc === undefined || defaultSrc === true) {
+	if (defaultSrc === true) {
 		arr.push("default-src 'self'");
-	} else if (defaultSrc !== false) {
+	} else if (defaultSrc) {
 		arr.push(`default-src ${defaultSrc.join(" ")}`);
 	}
-	if (baseUri === undefined || baseUri === true) {
+	if (baseUri === true) {
 		arr.push("base-uri 'self'");
-	} else if (baseUri !== false) {
+	} else if (baseUri) {
 		arr.push(`base-uri ${baseUri.join(" ")}`);
 	}
-	if (fontSrc === undefined || fontSrc === true) {
+	if (fontSrc === true) {
 		arr.push("font-src 'self' https: data:");
-	} else if (fontSrc !== false) {
+	} else if (fontSrc) {
 		arr.push(`font-src ${fontSrc.join(" ")}`);
 	}
-	if (formActions === undefined || formActions === true) {
-		arr.push("form-actions 'self'");
-	} else if (formActions !== false) {
-		arr.push(`form-actions ${formActions.join(" ")}`);
+	if (formAction === true) {
+		arr.push("form-action 'self'");
+	} else if (formAction) {
+		arr.push(`form-action ${formAction.join(" ")}`);
 	}
-	if (frameAncestors === undefined || frameAncestors === true) {
+	if (frameAncestors === true) {
 		arr.push("frame-ancestors 'self'");
-	} else if (frameAncestors !== false) {
+	} else if (frameAncestors) {
 		arr.push(`frame-ancestors ${frameAncestors.join(" ")}`);
 	}
-	if (imgSrc === undefined || imgSrc === true) {
+	if (frameSrc !== undefined && frameSrc !== false) {
+		arr.push(`frame-src ${frameSrc.join(" ")}`);
+	}
+	if (imgSrc === true) {
 		arr.push("img-src 'self'");
-	} else if (imgSrc !== false) {
+	} else if (imgSrc) {
 		arr.push(`img-src ${imgSrc.join(" ")}`);
 	}
-	if (objectSrc === undefined || objectSrc === true) {
+	if (objectSrc === true) {
 		arr.push("object-src 'none'");
-	} else if (objectSrc !== false) {
+	} else if (objectSrc) {
 		arr.push(`object-src ${objectSrc.join(" ")}`);
 	}
-	if (scriptSrc === undefined || scriptSrc === true) {
+	if (scriptSrc === true) {
 		arr.push("script-src 'self'");
-	} else if (scriptSrc !== false) {
+	} else if (scriptSrc) {
 		arr.push(`script-src ${scriptSrc.join(" ")}`);
 	}
 	if (scriptSrcElem !== undefined && scriptSrcElem !== false) {
 		arr.push(`script-src-elem ${scriptSrcElem.join(" ")}`);
 	}
-	if (scriptSrcAttr === undefined || scriptSrcAttr === true) {
+	if (scriptSrcAttr === true) {
 		arr.push("script-src-attr 'self'");
-	} else if (scriptSrcAttr !== false) {
+	} else if (scriptSrcAttr) {
 		arr.push(`script-src-attr ${scriptSrcAttr.join(" ")}`);
 	}
-	if (styleSrc === undefined || styleSrc === true) {
+	if (styleSrc === true) {
 		arr.push("style-src 'self' https: 'unsafe-inline'");
-	} else if (styleSrc !== false) {
+	} else if (styleSrc) {
 		arr.push(`style-src ${styleSrc.join(" ")}`);
 	}
 	if (styleSrcElem !== undefined && styleSrcElem !== false) {
@@ -223,7 +228,7 @@ const buildDirectivesString = (directives: Directives): string => {
 	if (sandbox !== undefined && sandbox !== false) {
 		arr.push(`sandbox ${sandbox.join(" ")}`);
 	}
-	if (upgradeInsecureRequests === undefined || upgradeInsecureRequests) {
+	if (upgradeInsecureRequests) {
 		arr.push("upgrade-insecure-requests");
 	}
 	if (childSrc !== undefined && childSrc !== false) {
@@ -260,6 +265,10 @@ class ContentSecurityPolicyHandler {
 	set: (value: Context) => void;
 	constructor(options: ContentSecurityPolicyOptions) {
 		const { useDefaults, directives, reportOnly } = options;
+		this.header =
+			reportOnly === undefined || reportOnly === false
+				? "Content-Security-Policy"
+				: "Content-Security-Policy-Report-Only";
 		if (directives === undefined || Object.keys(directives).length === 0) {
 			if (useDefaults === undefined || useDefaults) {
 				this.value = buildDirectivesString(defaultCspDirectives);
@@ -279,10 +288,6 @@ class ContentSecurityPolicyHandler {
 		this.set = (c: Context) => {
 			c.res.headers.set(this.header, this.value);
 		};
-		this.header =
-			reportOnly === undefined || reportOnly === false
-				? "Content-Security-Policy"
-				: "Content-Security-Policy-Report-Only";
 	}
 	apply(c: Context): void {
 		this.set(c);

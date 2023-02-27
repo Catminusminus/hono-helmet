@@ -49,7 +49,7 @@ app.get("/", (c) => c.text("Hello Hono!"));
 serve(app);
 ```
 
-The default headers are as follows:
+The default header fields are as follows:
 
 ```
 Content-Security-Policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
@@ -79,7 +79,7 @@ app.use(
 );
 ```
 
-To disable headers:
+To disable header fields:
 
 ```js
 app.use(
@@ -88,3 +88,72 @@ app.use(
   }),
 );
 ```
+
+## Reference
+
+<details>
+<summary><code>honoHelmet(options)</code></summary>
+
+```ts
+// Use the default header fields
+app.use(honoHelmet());
+
+// Disable one or more header fields
+app.use(
+  honoHelmet({
+    contentSecurityPolicy: false,
+  }),
+);
+
+// Use the default header fields but X-Permitted-Cross-Domain-Policies: all
+app.use(
+  honoHelmet({
+    permittedCrossDomainPolicies: {
+      permittedPolicies: "all",
+    },
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({contentSecurityPolicy: options})</code></summary>
+
+The default directives are as follows:
+
+```
+"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+```
+
+```ts
+// Use the defaults but "default-src 'none'
+app.use(
+  honoHelmet({
+    contentSecurityPolicy: {
+      defaultSrc: ["'none'"],
+    },
+  }),
+);
+
+// Use the defaults but disable "default-src"
+app.use(
+  honoHelmet({
+    contentSecurityPolicy: {
+      defaultSrc: false,
+    },
+  }),
+);
+
+// Disable the defaults and "default-src 'none'
+app.use(
+  honoHelmet({
+    contentSecurityPolicy: {
+      useDefaults: false,
+      defaultSrc: ["'none'"],
+    },
+  }),
+);
+```
+
+</details>
