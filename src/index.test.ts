@@ -298,3 +298,59 @@ describe("CSP Directives", () => {
 		});
 	});
 });
+
+describe("Referrer-Policy", () => {
+	let defaultHeaders: Map<string, string>;
+	let mock: {
+		res: { headers: Map<string, string> };
+	};
+	beforeEach(() => {
+		defaultHeaders = new Map([
+			[
+				"Content-Security-Policy",
+				"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+			],
+			["Cross-Origin-Embedder-Policy", "require-corp"],
+			["Cross-Origin-Opener-Policy", "same-origin"],
+			["Cross-Origin-Resource-Policy", "same-origin"],
+			["Referrer-Policy", "no-referrer"],
+			["Strict-Transport-Security", "max-age=15552000; includeSubDomains"],
+			["X-Content-Type-Options", "nosniff"],
+			["Origin-Agent-Cluster", "?1"],
+			["X-DNS-Prefetch-Control", "off"],
+			["X-Download-Options", "noopen"],
+			["X-Frame-Options", "SAMEORIGIN"],
+			["X-Permitted-Cross-Domain-Policies", "none"],
+			["X-XSS-Protection", "0"],
+		]);
+		mock = {
+			res: {
+				headers: new Map<string, string>(),
+			},
+		};
+	});
+	test("default", () => {
+		const helmet = honoHelmet({ referrerPolicy: true });
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("no-referrer-when-downgrade", () => {
+		defaultHeaders.set("Referrer-Policy", "no-referrer-when-downgrade");
+		const helmet = honoHelmet({
+			referrerPolicy: { policy: "no-referrer-when-downgrade" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("multiple values", () => {
+		defaultHeaders.set("Referrer-Policy", "origin,no-referrer-when-downgrade");
+		const helmet = honoHelmet({
+			referrerPolicy: { policy: ["origin", "no-referrer-when-downgrade"] },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+});
