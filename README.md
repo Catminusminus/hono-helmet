@@ -136,6 +136,15 @@ app.use(
   }),
 );
 
+// Use the defaults but "default-src 'self' 'nonce-<nonce>'
+app.use(
+  honoHelmet({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
+    },
+  }),
+);
+
 // Use the defaults but disable "default-src"
 app.use(
   honoHelmet({
@@ -152,6 +161,261 @@ app.use(
       useDefaults: false,
       defaultSrc: ["'none'"],
     },
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({crossOriginEmbedderPolicy: options})</code></summary>
+
+Default:
+
+```
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+```ts
+// Cross-Origin-Embedder-Policy: credentialless
+app.use(
+  honoHelmet({
+    crossOriginEmbedderPolicy: {
+      policy: "credentialless",
+    },
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({crossOriginOpenerPolicy: options})</code></summary>
+
+Default:
+
+```
+Cross-Origin-Opener-Policy: same-origin
+```
+
+```ts
+// Cross-Origin-Opener-Policy: same-origin-allow-popups
+app.use(
+  honoHelmet({
+    crossOriginOpenerPolicy: {
+      policy: "same-origin-allow-popups",
+    },
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({referrerPolicy: options})</code></summary>
+
+Default:
+
+```
+Referrer-Policy: no-referrer
+```
+
+The custom option does not work now.
+
+</details>
+
+<details>
+<summary><code>honoHelmet({hsts: options})</code></summary>
+
+Default:
+
+```
+Strict-Transport-Security: max-age=15552000; includeSubDomains
+```
+
+```ts
+// Strict-Transport-Security: max-age=123456; includeSubDomains
+app.use(
+  honoHelmet.hsts({
+    maxAge: 123456,
+  }),
+);
+
+// Strict-Transport-Security: max-age=123456
+app.use(
+  honoHelmet.hsts({
+    maxAge: 123456,
+    includeSubDomains: false,
+  }),
+);
+
+// Strict-Transport-Security: max-age=123456; includeSubDomains; preload
+app.use(
+  honoHelmet.hsts({
+    maxAge: 63072000,
+    preload: true,
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({nosniff: options})</code></summary>
+
+Default:
+
+```
+X-Content-Type-Options: nosniff
+```
+
+```ts
+// Disable X-Content-Type-Options: nosniff
+app.use(
+  honoHelmet({
+    nosniff: false,
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({originAgentCluster: options})</code></summary>
+
+Default:
+
+```
+Origin-Agent-Cluster: ?1
+```
+
+```ts
+// Origin-Agent-Cluster: ?0
+app.use(
+  honoHelmet({
+    originAgentCluster: "?0",
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({dnsPrefetchControl: options})</code></summary>
+
+Default:
+
+```
+X-DNS-Prefetch-Control: off
+```
+
+```ts
+// X-DNS-Prefetch-Control: on
+app.use(
+  honoHelmet({
+    dnsPrefetchControl: {
+      allow: true,
+    },
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({ieNoOpen: options})</code></summary>
+
+Default:
+
+```
+X-Download-Options: noopen
+```
+
+```ts
+// Disable X-Download-Options: noopen
+app.use(
+  honoHelmet({
+    ieNoOpen: false,
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({frameguard: options})</code></summary>
+
+Default:
+
+```
+X-Frame-Options: SAMEORIGIN
+```
+
+```ts
+// X-Frame-Options: DENY
+app.use(
+  honoHelmet({
+    frameguard: {
+      action: "deny",
+    },
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({permittedCrossDomainPolicies: options})</code></summary>
+
+Default:
+
+```
+X-Permitted-Cross-Domain-Policies: none
+```
+
+```ts
+// X-Permitted-Cross-Domain-Policies: by-content-type
+app.use(
+  honoHelmet({
+    permittedCrossDomainPolicies: {
+      permittedPolicies: "by-content-type",
+    },
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({hidePoweredBy: options})</code></summary>
+
+Default: options === true
+
+```ts
+// X-Permitted-Cross-Domain-Policies: by-content-type
+app.use(
+  honoHelmet({
+    hidePoweredBy: false,
+  }),
+);
+```
+
+</details>
+
+<details>
+<summary><code>honoHelmet({xssFilter: options})</code></summary>
+
+Default:
+
+```
+X-XSS-Protection: 0
+```
+
+```ts
+// Disable X-XSS-Protection: 0
+app.use(
+  honoHelmet({
+    xssFilter: false,
   }),
 );
 ```
