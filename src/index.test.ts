@@ -201,7 +201,10 @@ test("X-Permitted-Cross-Domain-Policies: all", () => {
 
 describe("CSP Directives", () => {
 	let defaultHeaders: Map<string, string>;
-	let mock: { res: { headers: Map<string, string> } };
+	let mock: {
+		res: { headers: Map<string, string>; value: string };
+		req: string;
+	};
 	beforeEach(() => {
 		defaultHeaders = new Map([
 			[
@@ -224,7 +227,9 @@ describe("CSP Directives", () => {
 		mock = {
 			res: {
 				headers: new Map<string, string>(),
+				value: "hash",
 			},
+			req: "something",
 		};
 	});
 	test("use defaults: true", () => {
@@ -271,6 +276,20 @@ describe("CSP Directives", () => {
 				useDefaults: false,
 				directives: {
 					defaultSrc: ["'self'", "'none'"],
+				},
+			},
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("use defaults: false, functional default-src value", () => {
+		defaultHeaders.set("Content-Security-Policy", "default-src 'something'");
+		const helmet = honoHelmet({
+			contentSecurityPolicy: {
+				useDefaults: false,
+				directives: {
+					defaultSrc: [(req, res) => `'${req}'`],
 				},
 			},
 		});

@@ -1,4 +1,4 @@
-import type { Context, MiddlewareHandler, Env } from "hono";
+import type { Context, MiddlewareHandler, Env, HonoRequest } from "hono";
 
 type Sandbox =
 	| "allow-downloads"
@@ -17,33 +17,101 @@ type Sandbox =
 	| "allow-top-navigation-by-user-activation"
 	| "allow-top-navigation-to-custom-protocols";
 
+type FunctionalDirectiveValue = (req: HonoRequest, res: Response) => string;
+
+type Directive<T> = (T | FunctionalDirectiveValue)[];
+
 interface Directives {
-	defaultSrc?: string[] | boolean;
-	baseUri?: string[] | boolean;
-	fontSrc?: string[] | boolean;
-	formAction?: string[] | boolean;
-	frameAncestors?: string[] | boolean;
-	frameSrc?: string[] | false;
-	imgSrc?: string[] | boolean;
-	objectSrc?: string[] | boolean;
-	scriptSrc?: string[] | boolean;
-	scriptSrcElem?: string[] | false;
-	scriptSrcAttr?: string[] | boolean;
-	styleSrc?: string[] | boolean;
-	styleSrcElem?: string[] | false;
-	styleSrcAttr?: string[] | false;
-	workerSrc?: string[] | false;
-	sandbox?: Sandbox[] | false;
+	defaultSrc?: Directive<string> | boolean;
+	baseUri?: Directive<string> | boolean;
+	fontSrc?: Directive<string> | boolean;
+	formAction?: Directive<string> | boolean;
+	frameAncestors?: Directive<string> | boolean;
+	frameSrc?: Directive<string> | false;
+	imgSrc?: Directive<string> | boolean;
+	objectSrc?: Directive<string> | boolean;
+	scriptSrc?: Directive<string> | boolean;
+	scriptSrcElem?: Directive<string> | false;
+	scriptSrcAttr?: Directive<string> | boolean;
+	styleSrc?: Directive<string> | boolean;
+	styleSrcElem?: Directive<string> | false;
+	styleSrcAttr?: Directive<string> | false;
+	workerSrc?: Directive<string> | false;
+	sandbox?: Directive<Sandbox> | false;
 	upgradeInsecureRequests?: boolean;
-	childSrc?: string[] | false;
-	connectSrc?: string[] | false;
-	manifestSrc?: string[] | false;
-	mediaSrc?: string[] | false;
-	prefetchSrc?: string[] | false;
+	childSrc?: Directive<string> | false;
+	connectSrc?: Directive<string> | false;
+	manifestSrc?: Directive<string> | false;
+	mediaSrc?: Directive<string> | false;
+	prefetchSrc?: Directive<string> | false;
 	requireTrustedTypesFor?: boolean;
-	trustedTypes?: string[] | false;
-	[key: string]: string[] | boolean | undefined;
+	trustedTypes?: Directive<string> | false;
 }
+
+interface ValidatedStringDirectives {
+	kind: "string";
+	defaultSrc?: string[];
+	baseUri?: string[];
+	fontSrc?: string[];
+	formAction?: string[];
+	frameAncestors?: string[];
+	frameSrc?: string[];
+	imgSrc?: string[];
+	objectSrc?: string[];
+	scriptSrc?: string[];
+	scriptSrcElem?: string[];
+	scriptSrcAttr?: string[];
+	styleSrc?: string[];
+	styleSrcElem?: string[];
+	styleSrcAttr?: string[];
+	workerSrc?: string[];
+	sandbox?: Sandbox[];
+	upgradeInsecureRequests?: boolean;
+	childSrc?: string[];
+	connectSrc?: string[];
+	manifestSrc?: string[];
+	mediaSrc?: string[];
+	prefetchSrc?: string[];
+	requireTrustedTypesFor?: boolean;
+	trustedTypes?: string[];
+}
+
+interface ValueAndFunction<T> {
+	value: T[];
+	func?: FunctionalDirectiveValue[];
+}
+
+interface ValidatedFunctionalDirectives {
+	kind: "functional";
+	defaultSrc?: ValueAndFunction<string>;
+	baseUri?: ValueAndFunction<string>;
+	fontSrc?: ValueAndFunction<string>;
+	formAction?: ValueAndFunction<string>;
+	frameAncestors?: ValueAndFunction<string>;
+	frameSrc?: ValueAndFunction<string>;
+	imgSrc?: ValueAndFunction<string>;
+	objectSrc?: ValueAndFunction<string>;
+	scriptSrc?: ValueAndFunction<string>;
+	scriptSrcElem?: ValueAndFunction<string>;
+	scriptSrcAttr?: ValueAndFunction<string>;
+	styleSrc?: ValueAndFunction<string>;
+	styleSrcElem?: ValueAndFunction<string>;
+	styleSrcAttr?: ValueAndFunction<string>;
+	workerSrc?: ValueAndFunction<string>;
+	sandbox?: ValueAndFunction<Sandbox>;
+	upgradeInsecureRequests?: boolean;
+	childSrc?: ValueAndFunction<string>;
+	connectSrc?: ValueAndFunction<string>;
+	manifestSrc?: ValueAndFunction<string>;
+	mediaSrc?: ValueAndFunction<string>;
+	prefetchSrc?: ValueAndFunction<string>;
+	requireTrustedTypesFor?: boolean;
+	trustedTypes?: ValueAndFunction<string>;
+}
+
+type ValidatedDirectives =
+	| ValidatedStringDirectives
+	| ValidatedFunctionalDirectives;
 
 interface ContentSecurityPolicyOptions {
 	useDefaults?: boolean;
@@ -105,7 +173,8 @@ class ContentSecurityPolicyDefaultHandler {
 	}
 }
 
-const defaultCspDirectives: Directives = {
+const defaultCspDirectives: ValidatedStringDirectives = {
+	kind: "string",
 	defaultSrc: ["'self'"],
 	baseUri: ["'self'"],
 	fontSrc: ["'self' https: data:"],
@@ -119,20 +188,169 @@ const defaultCspDirectives: Directives = {
 	formAction: ["'self'"],
 };
 
-const createAllDirectives = (directives: Directives): Directives => {
-	const allDirectives = defaultCspDirectives;
-	const mergedDirectives = Object.assign(allDirectives, directives);
-	for (const directive in mergedDirectives) {
-		if (Object.prototype.hasOwnProperty.call(mergedDirectives, directive)) {
-			if (mergedDirectives[directive] === false) {
-				mergedDirectives[directive] = undefined;
+const parseDirectives = (
+	directives: Directives,
+	useDefault: boolean,
+): ValidatedDirectives => {
+	const {
+		defaultSrc,
+		baseUri,
+		fontSrc,
+		formAction,
+		frameAncestors,
+		frameSrc,
+		imgSrc,
+		objectSrc,
+		scriptSrc,
+		scriptSrcElem,
+		scriptSrcAttr,
+		styleSrc,
+		styleSrcElem,
+		styleSrcAttr,
+		workerSrc,
+		sandbox,
+		upgradeInsecureRequests,
+		childSrc,
+		connectSrc,
+		manifestSrc,
+		mediaSrc,
+		prefetchSrc,
+		requireTrustedTypesFor,
+		trustedTypes,
+	} = directives;
+	let isFunctional = false;
+	type Ret = string[] | undefined | ValueAndFunction<string>;
+	const process = (directive: Directive<string> | false | undefined): Ret => {
+		if (!directive) {
+			return undefined;
+		}
+		const value = [];
+		const func = [];
+		for (const v of directive) {
+			if (typeof v === "string") {
+				value.push(v);
+			} else {
+				isFunctional = true;
+				func.push(v);
 			}
 		}
-	}
-	return mergedDirectives;
+		if (!isFunctional) {
+			return value;
+		}
+		return { value, func };
+	};
+	type RetSandbox = Sandbox[] | undefined | ValueAndFunction<Sandbox>;
+	const processSandbox = (
+		directive: Directive<Sandbox> | false | undefined,
+	): RetSandbox => {
+		if (!directive) {
+			return undefined;
+		}
+		const value: Sandbox[] = [];
+		const func = [];
+		for (const v of directive) {
+			if (typeof v === "string") {
+				value.push(v);
+			} else {
+				isFunctional = true;
+				func.push(v);
+			}
+		}
+		if (!isFunctional) {
+			return value;
+		}
+		return { value, func };
+	};
+	const newDefaultSrc =
+		defaultSrc === true || (useDefault && defaultSrc === undefined)
+			? defaultCspDirectives.defaultSrc
+			: process(defaultSrc);
+	const newBaseUri =
+		baseUri === true || (useDefault && baseUri === undefined)
+			? defaultCspDirectives.baseUri
+			: process(baseUri);
+	const newFontSrc =
+		fontSrc === true || (useDefault && fontSrc === undefined)
+			? defaultCspDirectives.fontSrc
+			: process(fontSrc);
+	const newFormAction =
+		formAction === true || (useDefault && formAction === undefined)
+			? defaultCspDirectives.formAction
+			: process(formAction);
+	const newFrameAncestors =
+		frameAncestors === true || (useDefault && frameAncestors === undefined)
+			? defaultCspDirectives.frameAncestors
+			: process(frameAncestors);
+	const newFrameSrc = process(frameSrc);
+	const newImgSrc =
+		imgSrc === true || (useDefault && imgSrc === undefined)
+			? defaultCspDirectives.imgSrc
+			: process(imgSrc);
+	const newObjectSrc =
+		objectSrc === true || (useDefault && objectSrc === undefined)
+			? defaultCspDirectives.objectSrc
+			: process(objectSrc);
+	const newScriptSrc =
+		scriptSrc === true || (useDefault && scriptSrc === undefined)
+			? defaultCspDirectives.scriptSrc
+			: process(scriptSrc);
+	const newScriptSrcElem = process(scriptSrcElem);
+	const newScriptSrcAttr =
+		scriptSrcAttr === true || (useDefault && scriptSrcAttr === undefined)
+			? defaultCspDirectives.scriptSrcAttr
+			: process(scriptSrcAttr);
+	const newStyleSrc =
+		styleSrc === true || (useDefault && styleSrc === undefined)
+			? defaultCspDirectives.styleSrc
+			: process(styleSrc);
+	const newStyleSrcElem = process(styleSrcElem);
+	const newStyleSrcAttr = process(styleSrcAttr);
+	const newWorkerSrc = process(workerSrc);
+	const newSandbox = processSandbox(sandbox);
+	const newUpgradeInsecureRequests =
+		upgradeInsecureRequests === true ||
+		(useDefault && upgradeInsecureRequests === undefined)
+			? defaultCspDirectives.upgradeInsecureRequests
+			: upgradeInsecureRequests;
+	const newChildSrc = process(childSrc);
+	const newConnectSrc = process(connectSrc);
+	const newManifestSrc = process(manifestSrc);
+	const newMediaSrc = process(mediaSrc);
+	const newPrefetchSrc = process(prefetchSrc);
+	const newRequireTrustedTypesFor = !!requireTrustedTypesFor;
+	const newTrustedTypes = process(trustedTypes);
+	return {
+		kind: isFunctional ? "functional" : "string",
+		defaultSrc: newDefaultSrc,
+		baseUri: newBaseUri,
+		fontSrc: newFontSrc,
+		formAction: newFormAction,
+		frameAncestors: newFrameAncestors,
+		frameSrc: newFrameSrc,
+		imgSrc: newImgSrc,
+		objectSrc: newObjectSrc,
+		scriptSrc: newScriptSrc,
+		scriptSrcElem: newScriptSrcElem,
+		scriptSrcAttr: newScriptSrcAttr,
+		styleSrc: newStyleSrc,
+		styleSrcElem: newStyleSrcElem,
+		styleSrcAttr: newStyleSrcAttr,
+		workerSrc: newWorkerSrc,
+		sandbox: newSandbox,
+		upgradeInsecureRequests: newUpgradeInsecureRequests,
+		childSrc: newChildSrc,
+		connectSrc: newConnectSrc,
+		manifestSrc: newManifestSrc,
+		mediaSrc: newMediaSrc,
+		prefetchSrc: newPrefetchSrc,
+		requireTrustedTypesFor: newRequireTrustedTypesFor,
+		trustedTypes: newTrustedTypes,
+	} as ValidatedDirectives;
 };
 
-const buildDirectivesString = (directives: Directives): string => {
+const buildStringDirectives = (
+	directives: ValidatedStringDirectives,
+): string => {
 	const {
 		defaultSrc,
 		baseUri,
@@ -160,93 +378,73 @@ const buildDirectivesString = (directives: Directives): string => {
 		trustedTypes,
 	} = directives;
 	const arr = [];
-	if (defaultSrc === true) {
-		arr.push("default-src 'self'");
-	} else if (defaultSrc) {
+	if (defaultSrc) {
 		arr.push(`default-src ${defaultSrc.join(" ")}`);
 	}
-	if (baseUri === true) {
-		arr.push("base-uri 'self'");
-	} else if (baseUri) {
+	if (baseUri) {
 		arr.push(`base-uri ${baseUri.join(" ")}`);
 	}
-	if (fontSrc === true) {
-		arr.push("font-src 'self' https: data:");
-	} else if (fontSrc) {
+	if (fontSrc) {
 		arr.push(`font-src ${fontSrc.join(" ")}`);
 	}
-	if (formAction === true) {
-		arr.push("form-action 'self'");
-	} else if (formAction) {
+	if (formAction) {
 		arr.push(`form-action ${formAction.join(" ")}`);
 	}
-	if (frameAncestors === true) {
-		arr.push("frame-ancestors 'self'");
-	} else if (frameAncestors) {
+	if (frameAncestors) {
 		arr.push(`frame-ancestors ${frameAncestors.join(" ")}`);
 	}
-	if (frameSrc !== undefined && frameSrc !== false) {
+	if (frameSrc) {
 		arr.push(`frame-src ${frameSrc.join(" ")}`);
 	}
-	if (imgSrc === true) {
-		arr.push("img-src 'self'");
-	} else if (imgSrc) {
+	if (imgSrc) {
 		arr.push(`img-src ${imgSrc.join(" ")}`);
 	}
-	if (objectSrc === true) {
-		arr.push("object-src 'none'");
-	} else if (objectSrc) {
+	if (objectSrc) {
 		arr.push(`object-src ${objectSrc.join(" ")}`);
 	}
-	if (scriptSrc === true) {
-		arr.push("script-src 'self'");
-	} else if (scriptSrc) {
+	if (scriptSrc) {
 		arr.push(`script-src ${scriptSrc.join(" ")}`);
 	}
-	if (scriptSrcElem !== undefined && scriptSrcElem !== false) {
+	if (scriptSrcElem) {
 		arr.push(`script-src-elem ${scriptSrcElem.join(" ")}`);
 	}
-	if (scriptSrcAttr === true) {
-		arr.push("script-src-attr 'self'");
-	} else if (scriptSrcAttr) {
+	if (scriptSrcAttr) {
 		arr.push(`script-src-attr ${scriptSrcAttr.join(" ")}`);
 	}
-	if (styleSrc === true) {
-		arr.push("style-src 'self' https: 'unsafe-inline'");
-	} else if (styleSrc) {
+	if (styleSrc) {
 		arr.push(`style-src ${styleSrc.join(" ")}`);
 	}
-	if (styleSrcElem !== undefined && styleSrcElem !== false) {
+	if (styleSrcElem) {
 		arr.push(`style-src-elem ${styleSrcElem.join(" ")}`);
 	}
-	if (styleSrcAttr !== undefined && styleSrcAttr !== false) {
+	if (styleSrcAttr) {
 		arr.push(`style-src-attr ${styleSrcAttr.join(" ")}`);
 	}
-	if (workerSrc !== undefined && workerSrc !== false) {
+	if (workerSrc) {
 		arr.push(`worker-src ${workerSrc.join(" ")}`);
 	}
-	if (sandbox !== undefined && sandbox !== false) {
+	if (sandbox) {
 		arr.push(`sandbox ${sandbox.join(" ")}`);
 	}
 	if (upgradeInsecureRequests) {
 		arr.push("upgrade-insecure-requests");
 	}
-	if (childSrc !== undefined && childSrc !== false) {
+	if (childSrc) {
 		arr.push(`child-src ${childSrc.join(" ")}`);
 	}
-	if (connectSrc !== undefined && connectSrc !== false) {
-		arr.push(`child-src ${connectSrc.join(" ")}`);
+	if (connectSrc) {
+		arr.push(`connect-src ${connectSrc.join(" ")}`);
 	}
-	if (manifestSrc !== undefined && manifestSrc !== false) {
+	if (manifestSrc) {
 		arr.push(`manifest-src ${manifestSrc.join(" ")}`);
 	}
-	if (mediaSrc !== undefined && mediaSrc !== false) {
+	if (mediaSrc) {
 		arr.push(`media-src ${mediaSrc.join(" ")}`);
 	}
-	if (prefetchSrc !== undefined && prefetchSrc !== false) {
+	if (prefetchSrc) {
 		arr.push(`prefetch-src ${prefetchSrc.join(" ")}`);
 	}
-	if (trustedTypes !== undefined && trustedTypes !== false) {
+	if (trustedTypes) {
 		if (trustedTypes.length === 0) {
 			arr.push("trusted-types");
 		} else {
@@ -259,8 +457,139 @@ const buildDirectivesString = (directives: Directives): string => {
 	return arr.join(";");
 };
 
+const buildFunctionalDirectives = (
+	directives: ValidatedFunctionalDirectives,
+) => {
+	const {
+		defaultSrc,
+		baseUri,
+		fontSrc,
+		formAction,
+		frameAncestors,
+		frameSrc,
+		imgSrc,
+		objectSrc,
+		scriptSrc,
+		scriptSrcElem,
+		scriptSrcAttr,
+		styleSrc,
+		styleSrcElem,
+		styleSrcAttr,
+		workerSrc,
+		sandbox,
+		upgradeInsecureRequests,
+		childSrc,
+		connectSrc,
+		manifestSrc,
+		mediaSrc,
+		prefetchSrc,
+		requireTrustedTypesFor,
+		trustedTypes,
+	} = directives;
+	const arr: FunctionalDirectiveValue[] = [];
+	const push = (
+		directive: ValueAndFunction<string> | undefined,
+		name: string,
+	) => {
+		if (directive) {
+			const len = directive.value.length;
+			if (directive.func) {
+				if (len === 0) {
+					arr.push(
+						(req: HonoRequest, res: Response) =>
+							`${name} ${directive.func?.map((f) => f(req, res)).join(" ")}`,
+					);
+				} else {
+					arr.push(
+						(req: HonoRequest, res: Response) =>
+							`${name} ${directive.value.join(" ")} ${directive.func
+								?.map((f) => f(req, res))
+								.join(" ")}`,
+					);
+				}
+			} else {
+				arr.push(
+					(_req: HonoRequest, _res: Response) =>
+						`${name} ${directive.value.join(" ")}`,
+				);
+			}
+		}
+	};
+	push(defaultSrc, "default-src");
+	push(baseUri, "base-uri");
+	push(fontSrc, "font-src");
+	push(formAction, "form-action");
+	push(frameAncestors, "frame-ancestors");
+	push(frameSrc, "frame-src");
+	push(imgSrc, "img-src");
+	push(objectSrc, "object-src");
+	push(scriptSrc, "script-src");
+	push(scriptSrcElem, "script-src-elem");
+	push(scriptSrcAttr, "script-src-attr");
+	push(styleSrc, "style-src");
+	push(styleSrcElem, "style-src-elem");
+	push(styleSrcAttr, "style-src-attr");
+	push(workerSrc, "worker-src");
+	push(sandbox, "sandbox");
+	if (upgradeInsecureRequests) {
+		arr.push(
+			(_req: HonoRequest, _res: Response) => "upgrade-insecure-requests",
+		);
+	}
+	push(childSrc, "child-src");
+	push(connectSrc, "connect-src");
+	push(manifestSrc, "manifest-src");
+	push(mediaSrc, "media-src");
+	push(prefetchSrc, "prefetch-src");
+	if (trustedTypes) {
+		const len = trustedTypes.value.length;
+		if (trustedTypes.func) {
+			if (len === 0) {
+				arr.push(
+					(req: HonoRequest, res: Response) =>
+						`trusted-types ${trustedTypes.func
+							?.map((f) => f(req, res))
+							.join(" ")}`,
+				);
+			} else {
+				arr.push(
+					(req: HonoRequest, res: Response) =>
+						`trusted-types ${trustedTypes.value.join(" ")} ${trustedTypes.func
+							?.map((f) => f(req, res))
+							.join(" ")}`,
+				);
+			}
+		} else {
+			if (len === 0) {
+				arr.push((_req: HonoRequest, _res: Response) => "trusted-types");
+			} else {
+				arr.push(
+					(_req: HonoRequest, _res: Response) =>
+						`trusted-types ${trustedTypes.value.join(" ")}`,
+				);
+			}
+		}
+	}
+	if (requireTrustedTypesFor) {
+		arr.push(
+			(_req: HonoRequest, _res: Response) =>
+				"require-trusted-types-for 'script'",
+		);
+	}
+	return (req: HonoRequest, res: Response) => {
+		let str = "";
+		for (let i = 0; i < arr.length; i++) {
+			str += arr[i](req, res);
+			if (i < arr.length - 1) {
+				str += ";";
+			}
+		}
+		return str;
+	};
+};
+
 class ContentSecurityPolicyHandler {
-	value: string = "";
+	value: string | FunctionalDirectiveValue = "";
 	header: string = "";
 	set: (value: Context) => void;
 	constructor(options: ContentSecurityPolicyOptions) {
@@ -270,24 +599,35 @@ class ContentSecurityPolicyHandler {
 				? "Content-Security-Policy"
 				: "Content-Security-Policy-Report-Only";
 		if (directives === undefined || Object.keys(directives).length === 0) {
-			if (useDefaults === undefined || useDefaults) {
-				this.value = buildDirectivesString(defaultCspDirectives);
-				this.set = (c: Context) => {
-					c.res.headers.set(this.header, this.value);
-				};
+			if (useDefaults === false) {
+				this.value = "";
+				this.set = (_: Context) => {};
 				return;
 			}
-			this.set = (_: Context) => {};
+			this.value = buildStringDirectives(defaultCspDirectives);
+			this.set = (c: Context) => {
+				c.res.headers.set(this.header, this.value as string);
+			};
 			return;
 		}
-		if (useDefaults === false) {
-			this.value = buildDirectivesString(directives);
+		const validatedDirectives = parseDirectives(
+			directives,
+			!(useDefaults === false),
+		);
+		if (validatedDirectives.kind === "string") {
+			this.value = buildStringDirectives(validatedDirectives);
+			this.set = (c: Context) => {
+				c.res.headers.set(this.header, this.value as string);
+			};
 		} else {
-			this.value = buildDirectivesString(createAllDirectives(directives));
+			this.value = buildFunctionalDirectives(validatedDirectives);
+			this.set = (c: Context) => {
+				c.res.headers.set(
+					this.header,
+					(this.value as FunctionalDirectiveValue)(c.req, c.res),
+				);
+			};
 		}
-		this.set = (c: Context) => {
-			c.res.headers.set(this.header, this.value);
-		};
 	}
 	apply(c: Context): void {
 		this.set(c);
