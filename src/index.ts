@@ -218,13 +218,11 @@ const parseDirectives = (
 		requireTrustedTypesFor,
 		trustedTypes,
 	} = directives;
-	type Ret = [string[] | undefined, false] | [ValueAndFunction<string>, true];
-	const process = (
-		directive: Directive<string> | false | undefined,
-		isFunc: boolean,
-	): Ret => {
+	let isFunctional = false;
+	type Ret = string[] | undefined | ValueAndFunction<string>;
+	const process = (directive: Directive<string> | false | undefined): Ret => {
 		if (!directive) {
-			return [undefined, false];
+			return undefined;
 		}
 		const value = [];
 		const func = [];
@@ -232,24 +230,21 @@ const parseDirectives = (
 			if (typeof v === "string") {
 				value.push(v);
 			} else {
-				isFunc = true;
+				isFunctional = true;
 				func.push(v);
 			}
 		}
-		if (!isFunc) {
-			return [value, false];
+		if (!isFunctional) {
+			return value;
 		}
-		return [{ value, func }, isFunc];
+		return { value, func };
 	};
-	type RetSandbox =
-		| [Sandbox[] | undefined, false]
-		| [ValueAndFunction<Sandbox>, true];
+	type RetSandbox = Sandbox[] | undefined | ValueAndFunction<Sandbox>;
 	const processSandbox = (
 		directive: Directive<Sandbox> | false | undefined,
-		isFunc: boolean,
 	): RetSandbox => {
 		if (!directive) {
-			return [undefined, false];
+			return undefined;
 		}
 		const value: Sandbox[] = [];
 		const func = [];
@@ -257,102 +252,73 @@ const parseDirectives = (
 			if (typeof v === "string") {
 				value.push(v);
 			} else {
-				isFunc = true;
+				isFunctional = true;
 				func.push(v);
 			}
 		}
-		if (!isFunc) {
-			return [value, false];
+		if (!isFunctional) {
+			return value;
 		}
-		return [{ value, func }, isFunc];
+		return { value, func };
 	};
-	let isFunctional = false;
-	let newDefaultSrc;
-	if (defaultSrc === true || (useDefault && defaultSrc === undefined)) {
-		newDefaultSrc = defaultCspDirectives.defaultSrc;
-	} else {
-		[newDefaultSrc, isFunctional] = process(defaultSrc, isFunctional);
-	}
-	let newBaseUri;
-	if (baseUri === true || (useDefault && baseUri === undefined)) {
-		newBaseUri = defaultCspDirectives.baseUri;
-	} else {
-		[newDefaultSrc, isFunctional] = process(baseUri, isFunctional);
-	}
-	let newFontSrc;
-	if (fontSrc === true || (useDefault && fontSrc === undefined)) {
-		newFontSrc = defaultCspDirectives.fontSrc;
-	} else {
-		[newFontSrc, isFunctional] = process(fontSrc, isFunctional);
-	}
-	let newFormAction;
-	if (formAction === true || (useDefault && formAction === undefined)) {
-		newFormAction = defaultCspDirectives.formAction;
-	} else {
-		[newFormAction, isFunctional] = process(formAction, isFunctional);
-	}
-	let newFrameAncestors;
-	if (frameAncestors === true || (useDefault && frameAncestors === undefined)) {
-		newFrameAncestors = defaultCspDirectives.frameAncestors;
-	} else {
-		[newFrameAncestors, isFunctional] = process(frameAncestors, isFunctional);
-	}
-	let newFrameSrc;
-	[newFrameSrc, isFunctional] = process(frameSrc, isFunctional);
-	let newImgSrc;
-	if (imgSrc === true || (useDefault && imgSrc === undefined)) {
-		newImgSrc = defaultCspDirectives.imgSrc;
-	} else {
-		[newImgSrc, isFunctional] = process(imgSrc, isFunctional);
-	}
-	let newObjectSrc;
-	if (objectSrc === true || (useDefault && objectSrc === undefined)) {
-		newObjectSrc = defaultCspDirectives.objectSrc;
-	} else {
-		[newObjectSrc, isFunctional] = process(objectSrc, isFunctional);
-	}
-	let newScriptSrc;
-	if (scriptSrc === true || (useDefault && scriptSrc === undefined)) {
-		newScriptSrc = defaultCspDirectives.scriptSrc;
-	} else {
-		[newScriptSrc, isFunctional] = process(scriptSrc, isFunctional);
-	}
-	let newScriptSrcElem;
-	[newScriptSrcElem, isFunctional] = process(scriptSrcElem, isFunctional);
-	let newScriptSrcAttr;
-	if (scriptSrcAttr === true || (useDefault && scriptSrcAttr === undefined)) {
-		newScriptSrcAttr = defaultCspDirectives.scriptSrcAttr;
-	} else {
-		[newScriptSrcAttr, isFunctional] = process(scriptSrcAttr, isFunctional);
-	}
-	let newStyleSrc;
-	if (styleSrc === true || (useDefault && styleSrc === undefined)) {
-		newStyleSrc = defaultCspDirectives.styleSrc;
-	} else {
-		[newStyleSrc, isFunctional] = process(styleSrc, isFunctional);
-	}
-	let newStyleSrcElem;
-	[newStyleSrcElem, isFunctional] = process(styleSrcElem, isFunctional);
-	let newStyleSrcAttr;
-	[newStyleSrcAttr, isFunctional] = process(styleSrcAttr, isFunctional);
-	let newWorkerSrc;
-	[newWorkerSrc, isFunctional] = process(workerSrc, isFunctional);
-	let newSandbox;
-	[newSandbox, isFunctional] = processSandbox(sandbox, isFunctional);
-	const newUpgradeInsecureRequests = !!upgradeInsecureRequests;
-	let newChildSrc;
-	[newChildSrc, isFunctional] = process(childSrc, isFunctional);
-	let newConnectSrc;
-	[newConnectSrc, isFunctional] = process(connectSrc, isFunctional);
-	let newManifestSrc;
-	[newManifestSrc, isFunctional] = process(manifestSrc, isFunctional);
-	let newMediaSrc;
-	[newMediaSrc, isFunctional] = process(mediaSrc, isFunctional);
-	let newPrefetchSrc;
-	[newPrefetchSrc, isFunctional] = process(prefetchSrc, isFunctional);
+	const newDefaultSrc =
+		defaultSrc === true || (useDefault && defaultSrc === undefined)
+			? defaultCspDirectives.defaultSrc
+			: process(defaultSrc);
+	const newBaseUri =
+		baseUri === true || (useDefault && baseUri === undefined)
+			? defaultCspDirectives.baseUri
+			: process(baseUri);
+	const newFontSrc =
+		fontSrc === true || (useDefault && fontSrc === undefined)
+			? defaultCspDirectives.fontSrc
+			: process(fontSrc);
+	const newFormAction =
+		formAction === true || (useDefault && formAction === undefined)
+			? defaultCspDirectives.formAction
+			: process(formAction);
+	const newFrameAncestors =
+		frameAncestors === true || (useDefault && frameAncestors === undefined)
+			? defaultCspDirectives.frameAncestors
+			: process(frameAncestors);
+	const newFrameSrc = process(frameSrc);
+	const newImgSrc =
+		imgSrc === true || (useDefault && imgSrc === undefined)
+			? defaultCspDirectives.imgSrc
+			: process(imgSrc);
+	const newObjectSrc =
+		objectSrc === true || (useDefault && objectSrc === undefined)
+			? defaultCspDirectives.objectSrc
+			: process(objectSrc);
+	const newScriptSrc =
+		scriptSrc === true || (useDefault && scriptSrc === undefined)
+			? defaultCspDirectives.scriptSrc
+			: process(scriptSrc);
+	const newScriptSrcElem = process(scriptSrcElem);
+	const newScriptSrcAttr =
+		scriptSrcAttr === true || (useDefault && scriptSrcAttr === undefined)
+			? defaultCspDirectives.scriptSrcAttr
+			: process(scriptSrcAttr);
+	const newStyleSrc =
+		styleSrc === true || (useDefault && styleSrc === undefined)
+			? defaultCspDirectives.styleSrc
+			: process(styleSrc);
+	const newStyleSrcElem = process(styleSrcElem);
+	const newStyleSrcAttr = process(styleSrcAttr);
+	const newWorkerSrc = process(workerSrc);
+	const newSandbox = processSandbox(sandbox);
+	const newUpgradeInsecureRequests =
+		upgradeInsecureRequests === true ||
+		(useDefault && upgradeInsecureRequests === undefined)
+			? defaultCspDirectives.upgradeInsecureRequests
+			: upgradeInsecureRequests;
+	const newChildSrc = process(childSrc);
+	const newConnectSrc = process(connectSrc);
+	const newManifestSrc = process(manifestSrc);
+	const newMediaSrc = process(mediaSrc);
+	const newPrefetchSrc = process(prefetchSrc);
 	const newRequireTrustedTypesFor = !!requireTrustedTypesFor;
-	let newTrustedTypes;
-	[newTrustedTypes, isFunctional] = process(trustedTypes, isFunctional);
+	const newTrustedTypes = process(trustedTypes);
 	return {
 		kind: isFunctional ? "functional" : "string",
 		defaultSrc: newDefaultSrc,
