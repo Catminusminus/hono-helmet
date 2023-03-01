@@ -220,7 +220,25 @@ Default:
 Referrer-Policy: no-referrer
 ```
 
-The custom option does not work now.
+```ts
+// Referrer-Policy: no-referrer-when-downgrade
+app.use(
+  honoHelmet({
+    referrerPolicy: {
+      policy: "no-referrer-when-downgrade",
+    },
+  }),
+);
+
+// Referrer-Policy: origin,no-referrer-when-downgrade
+app.use(
+  honoHelmet({
+    referrerPolicy: {
+      policy: ["origin", "no-referrer-when-downgrade"],
+    },
+  }),
+);
+```
 
 </details>
 

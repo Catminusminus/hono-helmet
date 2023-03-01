@@ -127,7 +127,15 @@ interface CrossOriginOpenerPolicyOptions {
 interface CrossOriginResourcePolicyOptions {
 	policy: "same-site" | "same-origin" | "cross-origin";
 }
-type ReferrerPolicy = "ReferrerPolicy" | "no-referrer-when-downgrade";
+type ReferrerPolicy =
+	| "no-referrer"
+	| "no-referrer-when-downgrade"
+	| "origin"
+	| "origin-when-cross-origin"
+	| "same-origin"
+	| "strict-origin"
+	| "strict-origin-when-cross-origin"
+	| "unsafe-url";
 interface ReferrerPolicyOptions {
 	policy: ReferrerPolicy | [ReferrerPolicy, ...ReferrerPolicy[]];
 }
