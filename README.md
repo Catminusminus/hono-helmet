@@ -254,24 +254,30 @@ Strict-Transport-Security: max-age=15552000; includeSubDomains
 ```ts
 // Strict-Transport-Security: max-age=123456; includeSubDomains
 app.use(
-  honoHelmet.hsts({
-    maxAge: 123456,
+  honoHelmet({
+    hsts: {
+      maxAge: 123456,
+    },
   }),
 );
 
 // Strict-Transport-Security: max-age=123456
 app.use(
-  honoHelmet.hsts({
-    maxAge: 123456,
-    includeSubDomains: false,
+  honoHelmet({
+    hsts: {
+      maxAge: 123456,
+      includeSubDomains: false,
+    },
   }),
 );
 
 // Strict-Transport-Security: max-age=123456; includeSubDomains; preload
 app.use(
-  honoHelmet.hsts({
-    maxAge: 63072000,
-    preload: true,
+  honoHelmet({
+    hsts: {
+      maxAge: 123456,
+      preload: true,
+    },
   }),
 );
 ```
@@ -407,10 +413,10 @@ app.use(
 <details>
 <summary><code>honoHelmet({hidePoweredBy: options})</code></summary>
 
-Default: options === true
+Default: remove X-Powered-By field
 
 ```ts
-// X-Permitted-Cross-Domain-Policies: by-content-type
+// Do not remove X-Powered-By field
 app.use(
   honoHelmet({
     hidePoweredBy: false,
