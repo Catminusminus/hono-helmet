@@ -329,6 +329,14 @@ describe("Cross-Origin-Embedder-Policy", () => {
 			},
 		};
 	});
+	test("default", () => {
+		const helmet = honoHelmet({
+			crossOriginEmbedderPolicy: { policy: "require-corp" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
 	test("credentialless", () => {
 		defaultHeaders.set("Cross-Origin-Embedder-Policy", "credentialless");
 		const helmet = honoHelmet({
@@ -338,7 +346,7 @@ describe("Cross-Origin-Embedder-Policy", () => {
 			expect(mock.res.headers).toEqual(defaultHeaders);
 		});
 	});
-	test("credentialless", () => {
+	test("unsafe-none", () => {
 		defaultHeaders.set("Cross-Origin-Embedder-Policy", "unsafe-none");
 		const helmet = honoHelmet({
 			crossOriginEmbedderPolicy: { policy: "unsafe-none" },
@@ -378,6 +386,15 @@ describe("Cross-Origin-Opener-Policy", () => {
 				headers: new Map<string, string>(),
 			},
 		};
+	});
+	test("default", () => {
+		defaultHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
+		const helmet = honoHelmet({
+			crossOriginOpenerPolicy: { policy: "same-origin" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
 	});
 	test("same-origin-allow-popups", () => {
 		defaultHeaders.set(
@@ -432,6 +449,15 @@ describe("Cross-Origin-Resource-Policy", () => {
 			},
 		};
 	});
+	test("default", () => {
+		defaultHeaders.set("Cross-Origin-Resource-Policy", "same-origin");
+		const helmet = honoHelmet({
+			crossOriginResourcePolicy: { policy: "same-origin" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
 	test("cross-origin", () => {
 		defaultHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
 		const helmet = honoHelmet({
@@ -484,6 +510,12 @@ describe("Referrer-Policy", () => {
 	});
 	test("default", () => {
 		const helmet = honoHelmet({ referrerPolicy: true });
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("default policy", () => {
+		const helmet = honoHelmet({ referrerPolicy: { policy: "no-referrer" } });
 		helmet(mock as unknown as Context, async () => {}).then(() => {
 			expect(mock.res.headers).toEqual(defaultHeaders);
 		});
@@ -638,6 +670,330 @@ describe("Strict-Transport-Security", () => {
 		);
 		const helmet = honoHelmet({
 			hsts: { preload: true, includeSubDomains: false },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+});
+
+describe("Origin-Agent-Cluster", () => {
+	let defaultHeaders: Map<string, string>;
+	let mock: {
+		res: { headers: Map<string, string> };
+	};
+	beforeEach(() => {
+		defaultHeaders = new Map([
+			[
+				"Content-Security-Policy",
+				"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+			],
+			["Cross-Origin-Embedder-Policy", "require-corp"],
+			["Cross-Origin-Opener-Policy", "same-origin"],
+			["Cross-Origin-Resource-Policy", "same-origin"],
+			["Referrer-Policy", "no-referrer"],
+			["Strict-Transport-Security", "max-age=15552000; includeSubDomains"],
+			["X-Content-Type-Options", "nosniff"],
+			["Origin-Agent-Cluster", "?1"],
+			["X-DNS-Prefetch-Control", "off"],
+			["X-Download-Options", "noopen"],
+			["X-Frame-Options", "SAMEORIGIN"],
+			["X-Permitted-Cross-Domain-Policies", "none"],
+			["X-XSS-Protection", "0"],
+		]);
+		mock = {
+			res: {
+				headers: new Map<string, string>(),
+			},
+		};
+	});
+	test("default", () => {
+		const helmet = honoHelmet({ originAgentCluster: true });
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("off", () => {
+		defaultHeaders.set("Origin-Agent-Cluster", "?0");
+		const helmet = honoHelmet({
+			originAgentCluster: "?0",
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("on", () => {
+		const helmet = honoHelmet({
+			originAgentCluster: "?1",
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+});
+
+describe("X-DNS-Prefetch-Control", () => {
+	let defaultHeaders: Map<string, string>;
+	let mock: {
+		res: { headers: Map<string, string> };
+	};
+	beforeEach(() => {
+		defaultHeaders = new Map([
+			[
+				"Content-Security-Policy",
+				"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+			],
+			["Cross-Origin-Embedder-Policy", "require-corp"],
+			["Cross-Origin-Opener-Policy", "same-origin"],
+			["Cross-Origin-Resource-Policy", "same-origin"],
+			["Referrer-Policy", "no-referrer"],
+			["Strict-Transport-Security", "max-age=15552000; includeSubDomains"],
+			["X-Content-Type-Options", "nosniff"],
+			["Origin-Agent-Cluster", "?1"],
+			["X-DNS-Prefetch-Control", "off"],
+			["X-Download-Options", "noopen"],
+			["X-Frame-Options", "SAMEORIGIN"],
+			["X-Permitted-Cross-Domain-Policies", "none"],
+			["X-XSS-Protection", "0"],
+		]);
+		mock = {
+			res: {
+				headers: new Map<string, string>(),
+			},
+		};
+	});
+	test("default", () => {
+		const helmet = honoHelmet({
+			dnsPrefetchControl: true,
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("on", () => {
+		defaultHeaders.set("X-DNS-Prefetch-Control", "on");
+		const helmet = honoHelmet({
+			dnsPrefetchControl: { allow: true },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("off", () => {
+		const helmet = honoHelmet({
+			dnsPrefetchControl: { allow: false },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+});
+
+describe("X-Download-Options", () => {
+	let defaultHeaders: Map<string, string>;
+	let mock: {
+		res: { headers: Map<string, string> };
+	};
+	beforeEach(() => {
+		defaultHeaders = new Map([
+			[
+				"Content-Security-Policy",
+				"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+			],
+			["Cross-Origin-Embedder-Policy", "require-corp"],
+			["Cross-Origin-Opener-Policy", "same-origin"],
+			["Cross-Origin-Resource-Policy", "same-origin"],
+			["Referrer-Policy", "no-referrer"],
+			["Strict-Transport-Security", "max-age=15552000; includeSubDomains"],
+			["X-Content-Type-Options", "nosniff"],
+			["Origin-Agent-Cluster", "?1"],
+			["X-DNS-Prefetch-Control", "off"],
+			["X-Download-Options", "noopen"],
+			["X-Frame-Options", "SAMEORIGIN"],
+			["X-Permitted-Cross-Domain-Policies", "none"],
+			["X-XSS-Protection", "0"],
+		]);
+		mock = {
+			res: {
+				headers: new Map<string, string>(),
+			},
+		};
+	});
+	test("default", () => {
+		const helmet = honoHelmet({
+			ieNoOpen: true,
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+});
+
+describe("X-Frame-Options", () => {
+	let defaultHeaders: Map<string, string>;
+	let mock: {
+		res: { headers: Map<string, string> };
+	};
+	beforeEach(() => {
+		defaultHeaders = new Map([
+			[
+				"Content-Security-Policy",
+				"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+			],
+			["Cross-Origin-Embedder-Policy", "require-corp"],
+			["Cross-Origin-Opener-Policy", "same-origin"],
+			["Cross-Origin-Resource-Policy", "same-origin"],
+			["Referrer-Policy", "no-referrer"],
+			["Strict-Transport-Security", "max-age=15552000; includeSubDomains"],
+			["X-Content-Type-Options", "nosniff"],
+			["Origin-Agent-Cluster", "?1"],
+			["X-DNS-Prefetch-Control", "off"],
+			["X-Download-Options", "noopen"],
+			["X-Frame-Options", "SAMEORIGIN"],
+			["X-Permitted-Cross-Domain-Policies", "none"],
+			["X-XSS-Protection", "0"],
+		]);
+		mock = {
+			res: {
+				headers: new Map<string, string>(),
+			},
+		};
+	});
+	test("default", () => {
+		const helmet = honoHelmet({
+			frameguard: true,
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("sameorigin", () => {
+		const helmet = honoHelmet({
+			frameguard: { action: "sameorigin" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("deny", () => {
+		defaultHeaders.set("X-Frame-Options", "DENY");
+		const helmet = honoHelmet({
+			frameguard: { action: "deny" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+});
+
+describe("X-Permitted-Cross-Domain-Policies", () => {
+	let defaultHeaders: Map<string, string>;
+	let mock: {
+		res: { headers: Map<string, string> };
+	};
+	beforeEach(() => {
+		defaultHeaders = new Map([
+			[
+				"Content-Security-Policy",
+				"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+			],
+			["Cross-Origin-Embedder-Policy", "require-corp"],
+			["Cross-Origin-Opener-Policy", "same-origin"],
+			["Cross-Origin-Resource-Policy", "same-origin"],
+			["Referrer-Policy", "no-referrer"],
+			["Strict-Transport-Security", "max-age=15552000; includeSubDomains"],
+			["X-Content-Type-Options", "nosniff"],
+			["Origin-Agent-Cluster", "?1"],
+			["X-DNS-Prefetch-Control", "off"],
+			["X-Download-Options", "noopen"],
+			["X-Frame-Options", "SAMEORIGIN"],
+			["X-Permitted-Cross-Domain-Policies", "none"],
+			["X-XSS-Protection", "0"],
+		]);
+		mock = {
+			res: {
+				headers: new Map<string, string>(),
+			},
+		};
+	});
+	test("default", () => {
+		const helmet = honoHelmet({
+			permittedCrossDomainPolicies: true,
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("none", () => {
+		const helmet = honoHelmet({
+			permittedCrossDomainPolicies: { permittedPolicies: "none" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("all", () => {
+		defaultHeaders.set("X-Permitted-Cross-Domain-Policies", "all");
+		const helmet = honoHelmet({
+			permittedCrossDomainPolicies: { permittedPolicies: "all" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("master-only", () => {
+		defaultHeaders.set("X-Permitted-Cross-Domain-Policies", "master-only");
+		const helmet = honoHelmet({
+			permittedCrossDomainPolicies: { permittedPolicies: "master-only" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("by-content-type", () => {
+		defaultHeaders.set("X-Permitted-Cross-Domain-Policies", "by-content-type");
+		const helmet = honoHelmet({
+			permittedCrossDomainPolicies: { permittedPolicies: "by-content-type" },
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+});
+
+describe("X-XSS-Protection", () => {
+	let defaultHeaders: Map<string, string>;
+	let mock: {
+		res: { headers: Map<string, string> };
+	};
+	beforeEach(() => {
+		defaultHeaders = new Map([
+			[
+				"Content-Security-Policy",
+				"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+			],
+			["Cross-Origin-Embedder-Policy", "require-corp"],
+			["Cross-Origin-Opener-Policy", "same-origin"],
+			["Cross-Origin-Resource-Policy", "same-origin"],
+			["Referrer-Policy", "no-referrer"],
+			["Strict-Transport-Security", "max-age=15552000; includeSubDomains"],
+			["X-Content-Type-Options", "nosniff"],
+			["Origin-Agent-Cluster", "?1"],
+			["X-DNS-Prefetch-Control", "off"],
+			["X-Download-Options", "noopen"],
+			["X-Frame-Options", "SAMEORIGIN"],
+			["X-Permitted-Cross-Domain-Policies", "none"],
+			["X-XSS-Protection", "0"],
+		]);
+		mock = {
+			res: {
+				headers: new Map<string, string>(),
+			},
+		};
+	});
+	test("default", () => {
+		const helmet = honoHelmet({
+			xssFilter: true,
 		});
 		helmet(mock as unknown as Context, async () => {}).then(() => {
 			expect(mock.res.headers).toEqual(defaultHeaders);
