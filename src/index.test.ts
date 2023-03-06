@@ -1000,3 +1000,85 @@ describe("X-XSS-Protection", () => {
 		});
 	});
 });
+
+describe("Reporting", () => {
+	let defaultHeaders: Map<string, string>;
+	let mock: {
+		res: { headers: Map<string, string> };
+	};
+	beforeEach(() => {
+		defaultHeaders = new Map([
+			[
+				"Content-Security-Policy",
+				"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+			],
+			["Cross-Origin-Embedder-Policy", "require-corp"],
+			["Cross-Origin-Opener-Policy", "same-origin"],
+			["Cross-Origin-Resource-Policy", "same-origin"],
+			["Referrer-Policy", "no-referrer"],
+			["Strict-Transport-Security", "max-age=15552000; includeSubDomains"],
+			["X-Content-Type-Options", "nosniff"],
+			["Origin-Agent-Cluster", "?1"],
+			["X-DNS-Prefetch-Control", "off"],
+			["X-Download-Options", "noopen"],
+			["X-Frame-Options", "SAMEORIGIN"],
+			["X-Permitted-Cross-Domain-Policies", "none"],
+			["X-XSS-Protection", "0"],
+		]);
+		mock = {
+			res: {
+				headers: new Map<string, string>(),
+			},
+		};
+	});
+	test("Reporting Endpoints", () => {
+		defaultHeaders.set(
+			"Content-Security-Policy",
+			"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests;report-to endpoint-1",
+		);
+		defaultHeaders.set(
+			"Reporting-Endpoints",
+			'endpoint-1="https://example.com/reports"',
+		);
+		const helmet = honoHelmet({
+			contentSecurityPolicy: {
+				directives: {
+					reportTo: "endpoint-1",
+				},
+			},
+			reportingEndpoints: {
+				"endpoint-1": "https://example.com/reports",
+			},
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+	test("Report To", () => {
+		defaultHeaders.set(
+			"Content-Security-Policy",
+			"default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests;report-to csp-endpoint",
+		);
+		defaultHeaders.set(
+			"Report-To",
+			'{"group":"csp-endpoint","max_age":10886400,"endpoints":[{"url":"https://example.com/csp-reports"}]}',
+		);
+		const helmet = honoHelmet({
+			contentSecurityPolicy: {
+				directives: {
+					reportTo: "csp-endpoint",
+				},
+			},
+			reportTo: [
+				{
+					group: "csp-endpoint",
+					max_age: 10886400,
+					endpoints: [{ url: "https://example.com/csp-reports" }],
+				},
+			],
+		});
+		helmet(mock as unknown as Context, async () => {}).then(() => {
+			expect(mock.res.headers).toEqual(defaultHeaders);
+		});
+	});
+});

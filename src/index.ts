@@ -46,6 +46,8 @@ interface Directives {
 	prefetchSrc?: Directive<string> | false;
 	requireTrustedTypesFor?: boolean;
 	trustedTypes?: Directive<string> | false;
+	reportUri?: Directive<string> | false;
+	reportTo?: string | false;
 }
 
 interface ValidatedStringDirectives {
@@ -74,6 +76,8 @@ interface ValidatedStringDirectives {
 	prefetchSrc?: string[];
 	requireTrustedTypesFor?: boolean;
 	trustedTypes?: string[];
+	reportUri?: string[];
+	reportTo?: string;
 }
 
 interface ValueAndFunction<T> {
@@ -107,6 +111,8 @@ interface ValidatedFunctionalDirectives {
 	prefetchSrc?: ValueAndFunction<string>;
 	requireTrustedTypesFor?: boolean;
 	trustedTypes?: ValueAndFunction<string>;
+	reportUri?: ValueAndFunction<string>;
+	reportTo?: string | FunctionalDirectiveValue;
 }
 
 type ValidatedDirectives =
@@ -154,7 +160,6 @@ interface FrameguardOptions {
 interface PermittedCrossDomainPoliciesOptions {
 	permittedPolicies: "none" | "master-only" | "by-content-type" | "all";
 }
-
 interface HonoHelmetOptions {
 	contentSecurityPolicy?: ContentSecurityPolicyOptions | boolean;
 	crossOriginEmbedderPolicy?: CrossOriginEmbedderPolicyOptions | boolean;
@@ -170,6 +175,9 @@ interface HonoHelmetOptions {
 	permittedCrossDomainPolicies?: PermittedCrossDomainPoliciesOptions | boolean;
 	hidePoweredBy?: boolean;
 	xssFilter?: boolean;
+	reportingEndpoints?: Record<string, string> | false;
+	// rome-ignore lint/suspicious/noExplicitAny: I could not find Report-To JSON Info
+	reportTo?: [Record<string, any>, ...Record<string, any>[]] | false;
 }
 
 class ContentSecurityPolicyDefaultHandler {
@@ -225,6 +233,8 @@ const parseDirectives = (
 		prefetchSrc,
 		requireTrustedTypesFor,
 		trustedTypes,
+		reportUri,
+		reportTo,
 	} = directives;
 	let isFunctional = false;
 	type Ret = string[] | undefined | ValueAndFunction<string>;
@@ -268,6 +278,19 @@ const parseDirectives = (
 			return value;
 		}
 		return { value, func };
+	};
+	type RetReportTo = string | undefined | FunctionalDirectiveValue;
+	const processReportTo = (
+		reportTo: string | FunctionalDirectiveValue | undefined | false,
+	): RetReportTo => {
+		if (!reportTo) {
+			return undefined;
+		}
+		if (typeof reportTo === "string") {
+			return reportTo;
+		}
+		isFunctional = true;
+		return reportTo;
 	};
 	const newDefaultSrc =
 		defaultSrc === true || (useDefault && defaultSrc === undefined)
@@ -327,6 +350,8 @@ const parseDirectives = (
 	const newPrefetchSrc = process(prefetchSrc);
 	const newRequireTrustedTypesFor = !!requireTrustedTypesFor;
 	const newTrustedTypes = process(trustedTypes);
+	const newReportUri = process(reportUri);
+	const newReportTo = processReportTo(reportTo);
 	return {
 		kind: isFunctional ? "functional" : "string",
 		defaultSrc: newDefaultSrc,
@@ -353,6 +378,8 @@ const parseDirectives = (
 		prefetchSrc: newPrefetchSrc,
 		requireTrustedTypesFor: newRequireTrustedTypesFor,
 		trustedTypes: newTrustedTypes,
+		reportUri: newReportUri,
+		reportTo: newReportTo,
 	} as ValidatedDirectives;
 };
 
@@ -384,6 +411,8 @@ const buildStringDirectives = (
 		prefetchSrc,
 		requireTrustedTypesFor,
 		trustedTypes,
+		reportUri,
+		reportTo,
 	} = directives;
 	const arr = [];
 	if (defaultSrc) {
@@ -462,6 +491,12 @@ const buildStringDirectives = (
 	if (requireTrustedTypesFor) {
 		arr.push("require-trusted-types-for 'script'");
 	}
+	if (reportUri) {
+		arr.push(`report-uri ${reportUri.join(" ")}`);
+	}
+	if (reportTo) {
+		arr.push(`report-to ${reportTo}`);
+	}
 	return arr.join(";");
 };
 
@@ -493,6 +528,8 @@ const buildFunctionalDirectives = (
 		prefetchSrc,
 		requireTrustedTypesFor,
 		trustedTypes,
+		reportUri,
+		reportTo,
 	} = directives;
 	const arr: FunctionalDirectiveValue[] = [];
 	const push = (
@@ -582,6 +619,14 @@ const buildFunctionalDirectives = (
 		arr.push(
 			(_req: HonoRequest, _res: Response) =>
 				"require-trusted-types-for 'script'",
+		);
+	}
+	push(reportUri, "report-uri");
+	if (typeof reportTo === "string") {
+		arr.push((_req: HonoRequest, _res: Response) => `report-to ${reportTo}`);
+	} else if (reportTo) {
+		arr.push(
+			(req: HonoRequest, res: Response) => `report-to ${reportTo(req, res)}`,
 		);
 	}
 	return (req: HonoRequest, res: Response) => {
@@ -838,6 +883,31 @@ class XssFilterHandler {
 	}
 }
 
+class ReportToHandler {
+	value: string;
+	// rome-ignore lint/suspicious/noExplicitAny: I could not find Report-To JSON Info
+	constructor(options: [Record<string, any>, ...Record<string, any>[]]) {
+		this.value = options.map((v) => JSON.stringify(v)).join(",");
+	}
+	apply(c: Context): void {
+		c.res.headers.set("Report-To", this.value);
+	}
+}
+
+class ReportingEndpointsHandler {
+	value: string;
+	constructor(options: Record<string, string>) {
+		let str = "";
+		for (const property in options) {
+			str += `${property}="${options[property]}"`;
+		}
+		this.value = str;
+	}
+	apply(c: Context): void {
+		c.res.headers.set("Reporting-Endpoints", this.value);
+	}
+}
+
 type Handler =
 	| ContentSecurityPolicyDefaultHandler
 	| ContentSecurityPolicyHandler
@@ -862,7 +932,9 @@ type Handler =
 	| PermittedCrossDomainPoliciesDefaultHandler
 	| PermittedCrossDomainPoliciesHandler
 	| HidePoweredByHandler
-	| XssFilterHandler;
+	| XssFilterHandler
+	| ReportToHandler
+	| ReportingEndpointsHandler;
 
 export const honoHelmet = <E extends Env, P extends string>(
 	options?: HonoHelmetOptions,
@@ -899,6 +971,8 @@ export const honoHelmet = <E extends Env, P extends string>(
 			permittedCrossDomainPolicies,
 			hidePoweredBy,
 			xssFilter,
+			reportingEndpoints,
+			reportTo,
 		} = options;
 		if (contentSecurityPolicy === undefined || contentSecurityPolicy === true) {
 			handlers.push(new ContentSecurityPolicyDefaultHandler());
@@ -981,6 +1055,12 @@ export const honoHelmet = <E extends Env, P extends string>(
 		}
 		if (xssFilter === undefined || xssFilter === true) {
 			handlers.push(new XssFilterHandler());
+		}
+		if (reportingEndpoints) {
+			handlers.push(new ReportingEndpointsHandler(reportingEndpoints));
+		}
+		if (reportTo) {
+			handlers.push(new ReportToHandler(reportTo));
 		}
 	}
 	return async (c, next) => {
