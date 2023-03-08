@@ -1,5 +1,6 @@
 import type { Context, MiddlewareHandler, Env, HonoRequest } from "hono";
 
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/sandbox
 type Sandbox =
 	| "allow-downloads"
 	| "allow-downloads-without-user-activation"
@@ -17,10 +18,22 @@ type Sandbox =
 	| "allow-top-navigation-by-user-activation"
 	| "allow-top-navigation-to-custom-protocols";
 
+// For example, consider scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`].
+// In that case, 'self' is a string directive value and
+// (req, res) => `'nonce-${res.locals.cspNonce}'` is a functional directive value.
 type FunctionalDirectiveValue = (req: HonoRequest, res: Response) => string;
 
+// For example, consider scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`].
+// In that case, ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`]'s type is
+// (string | FunctionalDirectiveValue)[].
 type Directive<T> = (T | FunctionalDirectiveValue)[];
 
+// The option interface of CSP directives.
+// You can specify not only Directive values, but also boolean value.
+// For example, scriptSrc: false means that you disable scriptSrc.
+// You can specify true for defaultSrc because there exists a default value of defaultSrc.
+// You cannnot specify true for frameSrc because there does not exist a default value of frameSrc.
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
 interface Directives {
 	defaultSrc?: Directive<string> | boolean;
 	baseUri?: Directive<string> | boolean;
@@ -50,6 +63,10 @@ interface Directives {
 	reportTo?: string | false;
 }
 
+// Since the Directive type is complex, we transform the Directive option
+// to a simpler type value.
+// Without functional directive values, we can almost treat the option values as
+// just arrays of strings.
 interface ValidatedStringDirectives {
 	kind: "string";
 	defaultSrc?: string[];
@@ -80,11 +97,15 @@ interface ValidatedStringDirectives {
 	reportTo?: string;
 }
 
+// This data structure enables us to handle functional directive values.
 interface ValueAndFunction<T> {
 	value: T[];
 	func?: FunctionalDirectiveValue[];
 }
 
+// For example, consider scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`].
+// This directive value will be transformed to
+// {value: ["'self'"], func: [(req, res) => `'nonce-${res.locals.cspNonce}'`]}
 interface ValidatedFunctionalDirectives {
 	kind: "functional";
 	defaultSrc?: ValueAndFunction<string>;
