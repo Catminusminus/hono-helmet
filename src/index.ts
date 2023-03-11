@@ -145,15 +145,19 @@ interface ContentSecurityPolicyOptions {
 	directives?: Directives;
 	reportOnly?: boolean;
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Embedder-Policy
 interface CrossOriginEmbedderPolicyOptions {
 	policy: "unsafe-none" | "require-corp" | "credentialless";
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy
 interface CrossOriginOpenerPolicyOptions {
 	policy: "unsafe-none" | "same-origin-allow-popups" | "same-origin";
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Resource-Policy
 interface CrossOriginResourcePolicyOptions {
 	policy: "same-site" | "same-origin" | "cross-origin";
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy
 type ReferrerPolicy =
 	| "no-referrer"
 	| "no-referrer-when-downgrade"
@@ -166,21 +170,26 @@ type ReferrerPolicy =
 interface ReferrerPolicyOptions {
 	policy: ReferrerPolicy | [ReferrerPolicy, ...ReferrerPolicy[]];
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
 interface HstsOptions {
 	maxAge?: number;
 	includeSubDomains?: boolean;
 	preload?: boolean;
 }
+// See https://web.dev/origin-agent-cluster/
 type OriginAgentClusterOptions = "?1" | "?0";
 interface DnsPrefetchControlOptions {
 	allow: boolean;
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
 interface FrameguardOptions {
 	action: "deny" | "sameorigin";
 }
+// See https://owasp.org/www-project-secure-headers/#x-permitted-cross-domain-policies
 interface PermittedCrossDomainPoliciesOptions {
 	permittedPolicies: "none" | "master-only" | "by-content-type" | "all";
 }
+// There are options with default values and without default values.
 interface HonoHelmetOptions {
 	contentSecurityPolicy?: ContentSecurityPolicyOptions | boolean;
 	crossOriginEmbedderPolicy?: CrossOriginEmbedderPolicyOptions | boolean;
@@ -662,6 +671,7 @@ const buildFunctionalDirectives = (
 	};
 };
 
+// Header Fields Handlers
 class ContentSecurityPolicyHandler {
 	value: string | FunctionalDirectiveValue = "";
 	header: string = "";
