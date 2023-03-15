@@ -234,6 +234,10 @@ const defaultCspDirectives: ValidatedStringDirectives = {
 	formAction: ["'self'"],
 };
 
+// Convert the specified CSP directives into a more manageable format.
+// If there are some functional directives, this function converts the specified
+// directives into ValidatedFunctionalDirectives. Otherwise, it converts them into
+// ValidatedStringDirectives.
 const parseDirectives = (
 	directives: Directives,
 	useDefault: boolean,
@@ -413,6 +417,7 @@ const parseDirectives = (
 	} as ValidatedDirectives;
 };
 
+// Build the CSP field value for string-only case
 const buildStringDirectives = (
 	directives: ValidatedStringDirectives,
 ): string => {
@@ -530,6 +535,7 @@ const buildStringDirectives = (
 	return arr.join(";");
 };
 
+// Build the CSP field value for functional directives case
 const buildFunctionalDirectives = (
 	directives: ValidatedFunctionalDirectives,
 ) => {
