@@ -1,5 +1,6 @@
 import type { Context, MiddlewareHandler, Env, HonoRequest } from "hono";
 
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/sandbox
 type Sandbox =
 	| "allow-downloads"
 	| "allow-downloads-without-user-activation"
@@ -17,10 +18,22 @@ type Sandbox =
 	| "allow-top-navigation-by-user-activation"
 	| "allow-top-navigation-to-custom-protocols";
 
+// For example, consider scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`].
+// In that case, 'self' is a string directive value and
+// (req, res) => `'nonce-${res.locals.cspNonce}'` is a functional directive value.
 type FunctionalDirectiveValue = (req: HonoRequest, res: Response) => string;
 
+// For example, consider scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`].
+// In that case, ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`]'s type is
+// (string | FunctionalDirectiveValue)[].
 type Directive<T> = (T | FunctionalDirectiveValue)[];
 
+// The option interface of CSP directives.
+// You can specify not only Directive values, but also boolean value.
+// For example, scriptSrc: false means that you disable scriptSrc.
+// You can specify true for defaultSrc because there exists a default value of defaultSrc.
+// You cannnot specify true for frameSrc because there does not exist a default value of frameSrc.
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
 interface Directives {
 	defaultSrc?: Directive<string> | boolean;
 	baseUri?: Directive<string> | boolean;
@@ -50,6 +63,10 @@ interface Directives {
 	reportTo?: string | false;
 }
 
+// Since the Directive type is complex, we transform the Directive option
+// to a simpler type value.
+// Without functional directive values, we can almost treat the option values as
+// just arrays of strings.
 interface ValidatedStringDirectives {
 	kind: "string";
 	defaultSrc?: string[];
@@ -80,11 +97,15 @@ interface ValidatedStringDirectives {
 	reportTo?: string;
 }
 
+// This data structure enables us to handle functional directive values.
 interface ValueAndFunction<T> {
 	value: T[];
 	func?: FunctionalDirectiveValue[];
 }
 
+// For example, consider scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`].
+// This directive value will be transformed to
+// {value: ["'self'"], func: [(req, res) => `'nonce-${res.locals.cspNonce}'`]}
 interface ValidatedFunctionalDirectives {
 	kind: "functional";
 	defaultSrc?: ValueAndFunction<string>;
@@ -124,15 +145,19 @@ interface ContentSecurityPolicyOptions {
 	directives?: Directives;
 	reportOnly?: boolean;
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Embedder-Policy
 interface CrossOriginEmbedderPolicyOptions {
 	policy: "unsafe-none" | "require-corp" | "credentialless";
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy
 interface CrossOriginOpenerPolicyOptions {
 	policy: "unsafe-none" | "same-origin-allow-popups" | "same-origin";
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Resource-Policy
 interface CrossOriginResourcePolicyOptions {
 	policy: "same-site" | "same-origin" | "cross-origin";
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy
 type ReferrerPolicy =
 	| "no-referrer"
 	| "no-referrer-when-downgrade"
@@ -145,21 +170,26 @@ type ReferrerPolicy =
 interface ReferrerPolicyOptions {
 	policy: ReferrerPolicy | [ReferrerPolicy, ...ReferrerPolicy[]];
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
 interface HstsOptions {
 	maxAge?: number;
 	includeSubDomains?: boolean;
 	preload?: boolean;
 }
+// See https://web.dev/origin-agent-cluster/
 type OriginAgentClusterOptions = "?1" | "?0";
 interface DnsPrefetchControlOptions {
 	allow: boolean;
 }
+// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
 interface FrameguardOptions {
 	action: "deny" | "sameorigin";
 }
+// See https://owasp.org/www-project-secure-headers/#x-permitted-cross-domain-policies
 interface PermittedCrossDomainPoliciesOptions {
 	permittedPolicies: "none" | "master-only" | "by-content-type" | "all";
 }
+// There are options with default values and without default values.
 interface HonoHelmetOptions {
 	contentSecurityPolicy?: ContentSecurityPolicyOptions | boolean;
 	crossOriginEmbedderPolicy?: CrossOriginEmbedderPolicyOptions | boolean;
@@ -204,6 +234,10 @@ const defaultCspDirectives: ValidatedStringDirectives = {
 	formAction: ["'self'"],
 };
 
+// Convert the specified CSP directives into a more manageable format.
+// If there are some functional directives, this function converts the specified
+// directives into ValidatedFunctionalDirectives. Otherwise, it converts them into
+// ValidatedStringDirectives.
 const parseDirectives = (
 	directives: Directives,
 	useDefault: boolean,
@@ -383,6 +417,7 @@ const parseDirectives = (
 	} as ValidatedDirectives;
 };
 
+// Build the CSP field value for string-only case
 const buildStringDirectives = (
 	directives: ValidatedStringDirectives,
 ): string => {
@@ -500,6 +535,7 @@ const buildStringDirectives = (
 	return arr.join(";");
 };
 
+// Build the CSP field value for functional directives case
 const buildFunctionalDirectives = (
 	directives: ValidatedFunctionalDirectives,
 ) => {
@@ -641,6 +677,7 @@ const buildFunctionalDirectives = (
 	};
 };
 
+// Header Fields Handlers
 class ContentSecurityPolicyHandler {
 	value: string | FunctionalDirectiveValue = "";
 	header: string = "";
