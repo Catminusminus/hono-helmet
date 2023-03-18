@@ -1,4 +1,4 @@
-import { honoHelmet } from "./index";
+import { honoHelmet } from "../src/index";
 import { Context } from "hono";
 
 test("default configuration", () => {
