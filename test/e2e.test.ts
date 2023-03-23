@@ -42,4 +42,34 @@ describe("default configuration without", () => {
 		expect(res.status).toBe(200);
 		expect(res.headers.get("Cross-Origin-Embedder-Policy")).toBeNull();
 	});
+	test("coop", async () => {
+		app.use(honoHelmet({ crossOriginOpenerPolicy: false }));
+		app.all("*", (c) => c.text("Hello"));
+		res = await app.request("http://localhost/", {
+			method: "GET",
+		});
+		expect(res).not.toBeNull();
+		expect(res.status).toBe(200);
+		expect(res.headers.get("Cross-Origin-Opener-Policy")).toBeNull();
+	});
+	test("corp", async () => {
+		app.use(honoHelmet({ crossOriginResourcePolicy: false }));
+		app.all("*", (c) => c.text("Hello"));
+		res = await app.request("http://localhost/", {
+			method: "GET",
+		});
+		expect(res).not.toBeNull();
+		expect(res.status).toBe(200);
+		expect(res.headers.get("Cross-Origin-Resource-Policy")).toBeNull();
+	});
+	test("rp", async () => {
+		app.use(honoHelmet({ referrerPolicy: false }));
+		app.all("*", (c) => c.text("Hello"));
+		res = await app.request("http://localhost/", {
+			method: "GET",
+		});
+		expect(res).not.toBeNull();
+		expect(res.status).toBe(200);
+		expect(res.headers.get("Referrer-Policy")).toBeNull();
+	});
 });
