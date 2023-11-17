@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@hono/node-server": "^0.6.0",
-    "hono": "3.9",
+    "hono": "3.10",
     "rome": "^11.0.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.0",
